@@ -37,6 +37,9 @@ export default function InviteFriendsScreen() {
   const [smsAvailable, setSmsAvailable] = useState(false);
   const [showCharacterSelector, setShowCharacterSelector] = useState<string | null>(null);
 
+  // Refs for subscription cleanup
+  const subscriptionRef = useRef<any>(null);
+
   useEffect(() => {
     if (!currentCampaign) {
       router.replace('/');
@@ -72,11 +75,14 @@ export default function InviteFriendsScreen() {
   useEffect(() => {
     if (!currentCampaign || !user) return;
 
-    // Create a unique channel name with timestamp to avoid conflicts
-    const channelName = `campaign-${currentCampaign.id}-${Date.now()}`;
+    // Clean up any existing subscription
+    if (subscriptionRef.current) {
+      subscriptionRef.current.unsubscribe();
+      subscriptionRef.current = null;
+    }
 
-    // Remove any existing channel with the same name first
-    supabase.removeAllChannels();
+    // Create a unique channel name
+    const channelName = `invite-screen-${currentCampaign.id}-${Date.now()}`;
 
     const subscription = supabase
       .channel(channelName)
@@ -105,47 +111,33 @@ export default function InviteFriendsScreen() {
           const newCharacter = payload.new as any;
           const oldCharacter = payload.old as any;
 
+          // Check if this character update affects our campaign
           if (
             (newCharacter && newCharacter.campaign_id === currentCampaign.uid) ||
             (oldCharacter && oldCharacter.campaign_id === currentCampaign.uid)
           ) {
-            fetchCharactersRef.current();
-            fetchCampaignCharactersRef.current();
+            // Refresh both character lists
+            fetchCharacters();
+            fetchCampaignCharacters();
           }
         }
       )
       .subscribe();
 
+    subscriptionRef.current = subscription;
+
     return () => {
-      // Proper cleanup: unsubscribe and remove the channel
-      const cleanup = async () => {
-        try {
-          await subscription.unsubscribe();
-          // Remove the channel from Supabase's internal state
-          supabase.removeChannel(subscription);
-        } catch (error) {
-          console.error('Error during subscription cleanup:', error);
-        }
-      };
-      cleanup();
-      supabase.removeChannel(subscription);
+      if (subscriptionRef.current) {
+        subscriptionRef.current.unsubscribe();
+        subscriptionRef.current = null;
+      }
     };
-  }, [currentCampaign?.id, currentCampaign?.uid, user?.id, fetchCharacters, setCurrentCampaign, fetchCampaignCharacters]);
+  }, [currentCampaign?.id, currentCampaign?.uid, user?.id, fetchCharacters, fetchCampaignCharacters, setCurrentCampaign]);
 
   const checkSmsAvailability = async () => {
     const isAvailable = await SMS.isAvailableAsync();
     setSmsAvailable(isAvailable);
   };
-
-  // Use refs to store latest functions for subscription callbacks
-  const fetchCharactersRef = useRef(fetchCharacters);
-  const fetchCampaignCharactersRef = useRef(fetchCampaignCharacters);
-
-  // Update refs when functions change
-  useEffect(() => {
-    fetchCharactersRef.current = fetchCharacters;
-    fetchCampaignCharactersRef.current = fetchCampaignCharacters;
-  }, [fetchCharacters, fetchCampaignCharacters]);
 
   const handleBack = () => {
     router.push('/');

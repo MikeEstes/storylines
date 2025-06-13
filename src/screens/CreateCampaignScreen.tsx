@@ -52,8 +52,19 @@ export default function CreateCampaignScreen() {
 
   const isEditing = currentCampaign !== null;
 
+  // Reset form when creating a new campaign (when currentCampaign is null)
   useEffect(() => {
-    if (currentCampaign) {
+    if (!currentCampaign) {
+      // Reset all form fields to defaults for new campaign
+      setCampaignName('');
+      setSelectedAdventure(null);
+      setStartingLevel('1');
+      setSelectedTone(null);
+      setExcludedTags([]);
+      setContentLevel('adults');
+      setRpFocus('balanced');
+    } else {
+      // Load existing campaign data for editing
       setCampaignName(currentCampaign.name);
       setStartingLevel(currentCampaign.level.toString());
       setSelectedTone(currentCampaign.tone);

@@ -40,7 +40,8 @@ export default function HomeScreen() {
   const handleCampaignPress = async (campaignId: string) => {
     const campaign = campaigns.find(c => c.id === campaignId);
     if (campaign) {
-      setCurrentCampaign(campaign);
+      // Clear current campaign first to ensure fresh state
+      setCurrentCampaign(null);
       
       // Mark campaign as read when entering it
       if (campaign.latest_message_id) {
@@ -53,6 +54,9 @@ export default function HomeScreen() {
           console.error('Error updating read status:', error);
         }
       }
+      
+      // Set the campaign after marking as read
+      setCurrentCampaign(campaign);
       
       if (campaign.status === 'creation') {
         router.push('/invite');
@@ -318,7 +322,11 @@ export default function HomeScreen() {
                 <View style={styles.campaignActionButtons}>
                   <TouchableOpacity
                     style={styles.createButton}
-                    onPress={() => router.push('/create')}
+                    onPress={() => {
+                      // Clear current campaign before creating new one
+                      setCurrentCampaign(null);
+                      router.push('/create');
+                    }}
                   >
                     <Text style={styles.buttonText}>Create Campaign</Text>
                   </TouchableOpacity>
